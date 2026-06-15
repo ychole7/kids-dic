@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>꼬마 사전</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff7eb3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="꼬마사전">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   :root{
@@ -37,6 +43,19 @@
   .mascot .mouth-open{ display:none; }
   .mascot.talk .mouth-closed{ display:none; }
   .mascot.talk .mouth-open{ display:block; }
+
+  /* 분위기 표시: 캐릭터 옆에 작은 이모지가 떠오름 */
+  .mascot{ overflow:visible; }
+  .mood-badge{ position:absolute; top:-2px; right:2px; font-size:30px;
+    opacity:0; transform:scale(.4) translateY(6px); transition:all .35s ease;
+    pointer-events:none; filter:drop-shadow(0 2px 4px rgba(0,0,0,.15)); }
+  .mood-badge.show{ opacity:1; transform:scale(1) translateY(0); animation:floaty 2.2s ease-in-out infinite; }
+  @keyframes floaty{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+  /* 분위기별 배경 빛 */
+  .mascot::before{ content:''; position:absolute; inset:-10px; border-radius:50%;
+    background:radial-gradient(circle, var(--glow,transparent) 0%, transparent 70%);
+    opacity:0; transition:opacity .4s; z-index:-1; }
+  .mascot.has-mood::before{ opacity:.55; }
 
   /* 캐릭터 바꾸기 버튼 */
   .char-btn{ background:#fff; border:2px solid #ffd6e3; color:#b58aa8; border-radius:14px;
@@ -281,9 +300,37 @@ const CHARS = [
 
 let charId = localStorage.getItem('kkoma_char') || 'bear';
 
+const MOODS = {
+  happy: { badge:'✨', glow:'rgba(255,210,80,.6)' },
+  scary: { badge:'😨', glow:'rgba(150,150,200,.6)' },
+  sad:   { badge:'💧', glow:'rgba(130,180,230,.5)' },
+  love:  { badge:'💕', glow:'rgba(255,150,190,.6)' },
+  calm:  { badge:'',   glow:'transparent' },
+};
+
 function renderMascot(){
   const c = CHARS.find(x=>x.id===charId) || CHARS[0];
-  mascot.innerHTML = `<svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">${c.svg}</svg>`;
+  mascot.innerHTML =
+    `<svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">${c.svg}</svg>` +
+    `<div class="mood-badge" id="moodBadge"></div>`;
+}
+
+// 단어 분위기에 따라 캐릭터 표정/빛 적용
+function applyMood(mood){
+  const m = MOODS[mood] || MOODS.calm;
+  const badge = $('moodBadge');
+  if(m.badge){
+    mascot.classList.add('has-mood');
+    mascot.style.setProperty('--glow', m.glow);
+    if(badge){ badge.textContent = m.badge; badge.classList.add('show'); }
+  } else {
+    clearMood();
+  }
+}
+function clearMood(){
+  mascot.classList.remove('has-mood');
+  const badge = $('moodBadge');
+  if(badge){ badge.classList.remove('show'); badge.textContent=''; }
 }
 
 function openCharPicker(){
@@ -320,6 +367,7 @@ function showTab(t){
 
 // 찾기 화면 초기화 (검색창 비우고 안내문 표시)
 function resetSearch(){
+  clearMood();
   $('q').value = '';
   $('result').innerHTML = `
     <div class="empty">
@@ -387,6 +435,7 @@ async function search(){
 }
 
 function renderResult(d, silent){
+  applyMood(d.mood); // 단어 분위기로 표정 바꾸기
   const isFav = favs.some(f=>f.word===d.word);
   $('result').innerHTML = `
     <div class="card">
@@ -475,6 +524,13 @@ function delFav(i){
 
 if('speechSynthesis' in window) speechSynthesis.getVoices();
 renderMascot(); // 저장된 캐릭터로 시작
+
+// PWA: Service Worker 등록 (오프라인 + 홈화면 설치)
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>

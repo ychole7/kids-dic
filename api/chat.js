@@ -21,6 +21,7 @@ export default async function handler(req, res) {
 {
   "word": "${word}",
   "emoji": "낱말을 가장 잘 나타내는 이모지 1개",
+  "mood": "낱말의 분위기. 다음 5개 중 하나만: happy(신나고 즐거움), scary(무섭거나 놀람), sad(슬프거나 아픔), calm(차분하고 평범함), love(사랑스럽고 따뜻함)",
   "meaning": "5~6세 아이도 이해할 수 있는 1~2문장 설명. 존댓말. 따뜻하게.",
   "example": "이 낱말을 쓴 짧고 쉬운 예문 1개. 아이 일상 속 상황.",
   "emojis": "낱말과 관련된 이모지 4~5개를 한 줄로"
