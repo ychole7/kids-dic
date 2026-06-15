@@ -38,10 +38,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 1000,
-        messages: [
-          { role: "user", content: prompt },
-          { role: "assistant", content: "{" },
-        ],
+        messages: [{ role: "user", content: prompt }],
       }),
     });
 
@@ -57,8 +54,6 @@ export default async function handler(req, res) {
       .map((b) => b.text)
       .join("");
     txt = txt.replace(/```json|```/g, "").trim();
-    // assistant 응답을 "{" 로 시작시켰으므로 다시 붙여 완전한 JSON 복원
-    if (!txt.startsWith("{")) txt = "{" + txt;
     // 앞뒤에 딴 글자가 섞여도 { ... } 부분만 추출
     const s = txt.indexOf("{");
     const e = txt.lastIndexOf("}");
