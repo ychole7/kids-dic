@@ -152,11 +152,23 @@ const mascot = $('mascot');
 let favs = JSON.parse(localStorage.getItem('kkkoma_favs')||'[]');
 
 function showTab(t){
+  stopSpeak(); // 탭 바꾸면 읽기 멈춤
   $('tab-s').classList.toggle('on', t==='s');
   $('tab-f').classList.toggle('on', t==='f');
   $('panel-s').style.display = t==='s'?'block':'none';
   $('panel-f').style.display = t==='f'?'block':'none';
   if(t==='f') renderFavs();
+  else resetSearch(); // 찾기 탭으로 오면 초기화
+}
+
+// 찾기 화면 초기화 (검색창 비우고 안내문 표시)
+function resetSearch(){
+  $('q').value = '';
+  $('result').innerHTML = `
+    <div class="empty">
+      궁금한 낱말을 적고 🔍 를 눌러보세요!<br><br>
+      곰돌이가 쉽게 알려줄게요 🐻
+    </div>`;
 }
 
 $('q').addEventListener('keydown', e=>{ if(e.key==='Enter') search(); });
@@ -189,7 +201,7 @@ async function search(){
   }
 }
 
-function renderResult(d){
+function renderResult(d, silent){
   const isFav = favs.some(f=>f.word===d.word);
   $('result').innerHTML = `
     <div class="card">
@@ -197,14 +209,31 @@ function renderResult(d){
         <span class="word-emoji">${d.emoji||'📖'}</span>
         <span class="word">${d.word}</span>
         <button class="fav ${isFav?'on':''}" id="favBtn" onclick='toggleFav(${JSON.stringify(d).replace(/'/g,"&#39;")})'>${isFav?'⭐':'☆'}</button>
-        <button class="speak" onclick='speak(${JSON.stringify(d.word+". "+d.meaning).replace(/'/g,"&#39;")})'>🔊</button>
+        <button class="speak" id="speakBtn" onclick='toggleSpeak(${JSON.stringify(d.word+". "+d.meaning).replace(/'/g,"&#39;")})'>🔊</button>
       </div>
       <div class="mean">${d.meaning||''}</div>
       ${d.example?`<div class="ex-box"><b>이렇게 써요:</b> ${d.example}</div>`:''}
       ${d.emojis?`<div class="emojis">${d.emojis}</div>`:''}
     </div>`;
-  if(d.meaning && !d.meaning.includes('잘 모르겠어요'))
+  if(!silent && d.meaning && !d.meaning.includes('잘 모르겠어요'))
     speak(d.word+". "+d.meaning);
+}
+
+function setSpeakIcon(speaking){
+  const b = $('speakBtn');
+  if(b) b.textContent = speaking ? '⏸️' : '🔊';
+}
+
+function stopSpeak(){
+  if('speechSynthesis' in window) speechSynthesis.cancel();
+  mascot.classList.remove('talk');
+  setSpeakIcon(false);
+}
+
+// 🔊 버튼: 읽는 중이면 멈춤, 아니면 읽기 (토글)
+function toggleSpeak(text){
+  if(speechSynthesis.speaking){ stopSpeak(); return; }
+  speak(text);
 }
 
 function speak(text){
@@ -215,7 +244,9 @@ function speak(text){
   const ko = speechSynthesis.getVoices().find(v=>v.lang.startsWith('ko'));
   if(ko) u.voice=ko;
   mascot.classList.add('talk');
-  u.onend = ()=> mascot.classList.remove('talk');
+  setSpeakIcon(true);
+  u.onend = ()=>{ mascot.classList.remove('talk'); setSpeakIcon(false); };
+  u.oncancel = ()=>{ mascot.classList.remove('talk'); setSpeakIcon(false); };
   speechSynthesis.speak(u);
 }
 
@@ -247,8 +278,8 @@ function renderFavs(){
 
 function openFav(i){
   const d = favs[i];
-  showTab('s');
-  renderResult(d);
+  showTab('s');        // 먼저 탭 이동 (여기서 초기화됨)
+  renderResult(d, true); // 그 다음 단어 표시 (자동읽기 끔)
   $('q').value = d.word;
 }
 function delFav(i){
