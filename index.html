@@ -173,10 +173,18 @@ async function search(){
       body:JSON.stringify({ word })
     });
     const data = await res.json();
-    let txt = (data.text||'').replace(/```json|```/g,'').trim();
-    const d = JSON.parse(txt);
-    renderResult(d);
+
+    // 서버가 에러를 준 경우
+    if(!res.ok || data.error){
+      console.error('server error:', data);
+      $('result').innerHTML = '<div class="err">앗! 곰돌이가 잠깐 졸았어요 😴<br>다시 한 번 눌러주세요.</div>';
+      return;
+    }
+
+    // 서버가 이미 파싱한 객체(word, meaning...)를 그대로 보냄
+    renderResult(data);
   }catch(e){
+    console.error('error:', e);
     $('result').innerHTML = '<div class="err">앗! 곰돌이가 잠깐 졸았어요 😴<br>다시 한 번 눌러주세요.</div>';
   }
 }
