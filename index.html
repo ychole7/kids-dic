@@ -58,6 +58,9 @@
     font-size:16px; transition:transform .1s; }
   .btn:active{ transform:scale(.94); }
   .btn-go{ background:linear-gradient(135deg,var(--pink),var(--purple)); padding:0 20px; font-size:22px; }
+  .btn-mic{ background:linear-gradient(135deg,var(--blue),var(--green)); padding:0 16px; font-size:22px; }
+  .btn-mic.listening{ background:linear-gradient(135deg,#ff5e7e,#ff2d55); animation:pulse 1s ease infinite; }
+  @keyframes pulse{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
 
   .tabs{ display:flex; gap:8px; margin-bottom:12px; }
   .tab{ background:#fff; border:2px solid #ffd6e3; color:#b58aa8; border-radius:14px;
@@ -125,6 +128,7 @@
 
   <div class="searchbar">
     <input id="q" type="text" placeholder="예) 무지개, 용기, 친구" autocomplete="off">
+    <button class="btn btn-mic" id="micBtn" onclick="startVoice()" title="말로 찾기">🎤</button>
     <button class="btn btn-go" onclick="search()">🔍</button>
   </div>
 
@@ -172,6 +176,34 @@ function resetSearch(){
 }
 
 $('q').addEventListener('keydown', e=>{ if(e.key==='Enter') search(); });
+
+// 🎤 말로 찾기 (음성 인식)
+function startVoice(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    alert('이 브라우저에서는 말로 찾기가 안 돼요. 사파리나 크롬에서 열어주세요!');
+    return;
+  }
+  stopSpeak(); // 곰돌이가 읽는 중이면 멈춤
+  const rec = new SR();
+  rec.lang = 'ko-KR';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+
+  const mic = $('micBtn');
+  mic.classList.add('listening');
+  mic.textContent = '👂';
+
+  rec.onresult = (e)=>{
+    let word = (e.results[0][0].transcript||'').trim();
+    word = word.replace(/[.?!,]/g,'').trim(); // 끝의 문장부호 제거
+    if(word){ $('q').value = word; search(); }
+  };
+  rec.onerror = ()=>{ /* 무음/취소 등은 조용히 넘어감 */ };
+  rec.onend = ()=>{ mic.classList.remove('listening'); mic.textContent='🎤'; };
+
+  try{ rec.start(); }catch(err){ mic.classList.remove('listening'); mic.textContent='🎤'; }
+}
 
 async function search(){
   const word = $('q').value.trim();
