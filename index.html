@@ -28,23 +28,39 @@
   .subtitle{ font-size:13px; color:#a08bb5; margin-bottom:14px; }
 
   /* 캐릭터 */
-  .mascot{ width:130px; height:130px; position:relative; margin-bottom:6px; transition:transform .3s; }
+  .mascot{ width:140px; height:140px; position:relative; margin-bottom:6px; transition:transform .3s; }
   .mascot.talk{ animation:bounce .5s ease infinite; }
   @keyframes bounce{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
-  .body-c{ position:absolute; left:15px; top:25px; width:100px; height:95px;
-    background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--yellow)); border-radius:50% 50% 46% 46%;
-    box-shadow:0 8px 20px rgba(255,150,80,.35); }
-  .ear{ position:absolute; width:34px; height:34px; background:var(--yellow); border-radius:50%; top:14px; }
-  .ear.l{ left:14px; } .ear.r{ right:14px; }
-  .ear i{ position:absolute; inset:9px; background:#ffb6c9; border-radius:50%; }
-  .eye{ position:absolute; width:15px; height:18px; background:#4a3b5c; border-radius:50%; top:58px; }
-  .eye.l{ left:48px; } .eye.r{ right:48px; }
-  .eye::after{ content:''; position:absolute; width:5px; height:5px; background:#fff; border-radius:50%; top:3px; left:3px; }
-  .cheek{ position:absolute; width:16px; height:11px; background:#ff9db4; border-radius:50%; top:78px; opacity:.7; }
-  .cheek.l{ left:36px; } .cheek.r{ right:36px; }
-  .mouth{ position:absolute; left:50%; transform:translateX(-50%); top:84px;
-    width:22px; height:11px; border-bottom:4px solid #4a3b5c; border-radius:0 0 40px 40px; }
-  .mascot.talk .mouth{ height:18px; width:26px; background:#ff8fa3; border:none; border-radius:50%; }
+  .mascot svg{ width:100%; height:100%; display:block; }
+  /* 말할 때 입 벌리기 (모든 캐릭터 공통) */
+  .mascot .mouth-closed{ display:block; }
+  .mascot .mouth-open{ display:none; }
+  .mascot.talk .mouth-closed{ display:none; }
+  .mascot.talk .mouth-open{ display:block; }
+
+  /* 캐릭터 바꾸기 버튼 */
+  .char-btn{ background:#fff; border:2px solid #ffd6e3; color:#b58aa8; border-radius:14px;
+    padding:6px 14px; font-weight:800; font-size:13px; cursor:pointer; margin-bottom:10px; }
+  .char-btn:active{ transform:scale(.95); }
+
+  /* 캐릭터 선택 모달 */
+  .modal-bg{ position:fixed; inset:0; background:rgba(80,50,90,.45); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .modal-bg.on{ display:flex; }
+  .modal{ background:#fff; border-radius:26px; padding:20px; max-width:430px; width:100%;
+    max-height:80vh; overflow-y:auto; box-shadow:0 20px 50px rgba(120,80,140,.3); }
+  .modal h3{ text-align:center; font-size:20px; color:var(--purple); margin-bottom:4px; }
+  .modal .mh-sub{ text-align:center; font-size:12px; color:#a08bb5; margin-bottom:16px; }
+  .char-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .char-card{ background:#fff7fb; border:3px solid #ffe0ec; border-radius:18px; padding:8px 4px;
+    cursor:pointer; text-align:center; transition:transform .1s; }
+  .char-card:active{ transform:scale(.94); }
+  .char-card.sel{ border-color:var(--pink); background:#fff0f6; box-shadow:0 4px 12px rgba(255,126,179,.3); }
+  .char-card svg{ width:70px; height:70px; }
+  .char-card .cname{ font-size:12px; font-weight:800; color:#7b6a8e; margin-top:2px; }
+  .modal-close{ display:block; width:100%; margin-top:16px; border:none; border-radius:16px;
+    background:linear-gradient(135deg,var(--pink),var(--purple)); color:#fff; font-weight:800;
+    font-size:16px; padding:13px; cursor:pointer; }
 
   /* 검색 */
   .searchbar{ width:100%; max-width:430px; display:flex; gap:8px; margin-bottom:8px; }
@@ -115,16 +131,8 @@
   <div class="title">🌈 꼬마 사전</div>
   <div class="subtitle">궁금한 낱말을 물어보세요!</div>
 
-  <div class="mascot" id="mascot">
-    <div class="ear l"><i></i></div>
-    <div class="ear r"><i></i></div>
-    <div class="body-c"></div>
-    <div class="eye l"></div>
-    <div class="eye r"></div>
-    <div class="cheek l"></div>
-    <div class="cheek r"></div>
-    <div class="mouth"></div>
-  </div>
+  <div class="mascot" id="mascot"></div>
+  <button class="char-btn" onclick="openCharPicker()">🎨 친구 바꾸기</button>
 
   <div class="searchbar">
     <input id="q" type="text" placeholder="예) 무지개, 용기, 친구" autocomplete="off">
@@ -141,7 +149,7 @@
     <div id="result">
       <div class="empty">
         궁금한 낱말을 적고 🔍 를 눌러보세요!<br><br>
-        곰돌이가 쉽게 알려줄게요 🐻
+        친구가 쉽게 알려줄게요 🐾
       </div>
     </div>
   </div>
@@ -150,10 +158,155 @@
     <div id="favList"></div>
   </div>
 
+  <!-- 캐릭터 선택 모달 -->
+  <div class="modal-bg" id="charModal">
+    <div class="modal">
+      <h3>🎨 친구를 골라요</h3>
+      <div class="mh-sub">읽어줄 친구를 골라주세요</div>
+      <div class="char-grid" id="charGrid"></div>
+      <button class="modal-close" onclick="closeCharPicker()">다 골랐어요</button>
+    </div>
+  </div>
+
 <script>
 const $ = id => document.getElementById(id);
 const mascot = $('mascot');
-let favs = JSON.parse(localStorage.getItem('kkkoma_favs')||'[]');
+let favs = JSON.parse(localStorage.getItem('kkoma_favs')||'[]');
+
+/* ===== 캐릭터 10종 (SVG) =====
+   각 캐릭터는 viewBox 0 0 140 140.
+   입은 두 개: .mouth-closed (평소), .mouth-open (말할 때).
+   공통 눈/볼은 헬퍼로 생성. */
+function eyes(){ return `
+  <ellipse class="eye" cx="56" cy="74" rx="6" ry="8" fill="#3d2f4d"/>
+  <ellipse class="eye" cx="84" cy="74" rx="6" ry="8" fill="#3d2f4d"/>
+  <circle cx="58" cy="71" r="2" fill="#fff"/>
+  <circle cx="86" cy="71" r="2" fill="#fff"/>`; }
+function cheeks(c='#ff9db4'){ return `
+  <ellipse cx="46" cy="86" rx="8" ry="5" fill="${c}" opacity=".6"/>
+  <ellipse cx="94" cy="86" rx="8" ry="5" fill="${c}" opacity=".6"/>`; }
+function mouth(){ return `
+  <path class="mouth-closed" d="M62 88 Q70 95 78 88" stroke="#3d2f4d" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <ellipse class="mouth-open" cx="70" cy="91" rx="9" ry="7" fill="#ff7a93"/>`; }
+
+const CHARS = [
+  { id:'bear', name:'곰돌이', svg:`
+    <ellipse cx="42" cy="34" rx="17" ry="17" fill="#f7c948"/><ellipse cx="42" cy="34" rx="8" ry="8" fill="#ffb6c9"/>
+    <ellipse cx="98" cy="34" rx="17" ry="17" fill="#f7c948"/><ellipse cx="98" cy="34" rx="8" ry="8" fill="#ffb6c9"/>
+    <ellipse cx="70" cy="72" rx="50" ry="48" fill="#ffd44d"/>
+    ${eyes()}${cheeks()}${mouth()}` },
+
+  { id:'labrador', name:'강아지', svg:`
+    <ellipse cx="34" cy="58" rx="16" ry="28" fill="#e9b870"/>
+    <ellipse cx="106" cy="58" rx="16" ry="28" fill="#e9b870"/>
+    <ellipse cx="70" cy="70" rx="48" ry="46" fill="#f5d9a8"/>
+    <ellipse cx="70" cy="84" rx="24" ry="18" fill="#fff4e2"/>
+    ${eyes()}${cheeks('#f0a878')}
+    <ellipse cx="70" cy="80" rx="7" ry="5" fill="#5b4636"/>
+    <path class="mouth-closed" d="M70 85 L70 92 M70 92 Q62 96 56 92 M70 92 Q78 96 84 92" stroke="#7a5c44" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse class="mouth-open" cx="70" cy="95" rx="8" ry="6" fill="#ff7a93"/>` },
+
+  { id:'cat', name:'고양이', svg:`
+    <path d="M36 50 L30 22 L56 40 Z" fill="#bda4e0"/><path d="M104 50 L110 22 L84 40 Z" fill="#bda4e0"/>
+    <path d="M38 48 L34 30 L52 42 Z" fill="#ffc2d6"/><path d="M102 48 L106 30 L88 42 Z" fill="#ffc2d6"/>
+    <ellipse cx="70" cy="74" rx="48" ry="44" fill="#cbb4e8"/>
+    ${eyes()}${cheeks()}
+    <path d="M70 80 l-4 4 M70 80 l4 4" stroke="#3d2f4d" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <path class="mouth-closed" d="M62 88 Q70 94 78 88" stroke="#3d2f4d" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse class="mouth-open" cx="70" cy="91" rx="8" ry="6" fill="#ff7a93"/>
+    <line x1="20" y1="72" x2="44" y2="74" stroke="#9b8cce" stroke-width="2"/><line x1="20" y1="80" x2="44" y2="80" stroke="#9b8cce" stroke-width="2"/>
+    <line x1="120" y1="72" x2="96" y2="74" stroke="#9b8cce" stroke-width="2"/><line x1="120" y1="80" x2="96" y2="80" stroke="#9b8cce" stroke-width="2"/>` },
+
+  { id:'rabbit', name:'토끼', svg:`
+    <ellipse cx="54" cy="28" rx="11" ry="26" fill="#fff"/><ellipse cx="54" cy="28" rx="5" ry="18" fill="#ffc2d6"/>
+    <ellipse cx="86" cy="28" rx="11" ry="26" fill="#fff"/><ellipse cx="86" cy="28" rx="5" ry="18" fill="#ffc2d6"/>
+    <ellipse cx="70" cy="76" rx="46" ry="44" fill="#fff"/>
+    ${eyes()}${cheeks()}
+    <ellipse cx="70" cy="82" rx="5" ry="4" fill="#ff9db4"/>
+    ${mouth()}` },
+
+  { id:'panda', name:'판다', svg:`
+    <circle cx="40" cy="38" r="16" fill="#3d3d3d"/><circle cx="100" cy="38" r="16" fill="#3d3d3d"/>
+    <ellipse cx="70" cy="74" rx="50" ry="47" fill="#fff"/>
+    <ellipse cx="56" cy="72" rx="13" ry="16" fill="#3d3d3d"/><ellipse cx="84" cy="72" rx="13" ry="16" fill="#3d3d3d"/>
+    <ellipse cx="56" cy="74" rx="6" ry="8" fill="#fff"/><ellipse cx="84" cy="74" rx="6" ry="8" fill="#fff"/>
+    <circle cx="56" cy="74" r="3" fill="#222"/><circle cx="84" cy="74" r="3" fill="#222"/>
+    <ellipse cx="70" cy="88" rx="6" ry="4" fill="#3d3d3d"/>
+    <path class="mouth-closed" d="M62 96 Q70 101 78 96" stroke="#3d3d3d" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse class="mouth-open" cx="70" cy="98" rx="8" ry="6" fill="#ff7a93"/>` },
+
+  { id:'fox', name:'여우', svg:`
+    <path d="M34 48 L26 20 L58 42 Z" fill="#ff9248"/><path d="M106 48 L114 20 L82 42 Z" fill="#ff9248"/>
+    <path d="M36 46 L32 28 L52 42 Z" fill="#fff"/><path d="M104 46 L108 28 L88 42 Z" fill="#fff"/>
+    <ellipse cx="70" cy="68" rx="48" ry="44" fill="#ff9248"/>
+    <path d="M70 70 Q44 84 70 116 Q96 84 70 70Z" fill="#fff"/>
+    ${eyes()}${cheeks('#ffb37a')}
+    <ellipse cx="70" cy="90" rx="6" ry="4" fill="#3d2f4d"/>
+    ${mouth()}` },
+
+  { id:'chick', name:'병아리', svg:`
+    <ellipse cx="70" cy="74" rx="48" ry="46" fill="#ffe14d"/>
+    <path d="M62 94 L70 104 L78 94 Z" fill="#ff9248"/>
+    ${eyes()}${cheeks('#ffba7a')}
+    <path d="M52 36 Q70 22 88 36" stroke="#ffd11a" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <ellipse class="mouth-open" cx="70" cy="100" rx="7" ry="5" fill="#ff7a93"/>` },
+
+  { id:'pig', name:'돼지', svg:`
+    <path d="M44 38 L40 24 L58 36 Z" fill="#ffb3c8"/><path d="M96 38 L100 24 L82 36 Z" fill="#ffb3c8"/>
+    <ellipse cx="70" cy="76" rx="48" ry="45" fill="#ffc2d6"/>
+    ${eyes()}${cheeks('#ff9db4')}
+    <ellipse cx="70" cy="86" rx="15" ry="11" fill="#ff9db4"/>
+    <circle cx="64" cy="86" r="3" fill="#d97a93"/><circle cx="76" cy="86" r="3" fill="#d97a93"/>
+    <path class="mouth-closed" d="M60 100 Q70 105 80 100" stroke="#d97a93" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse class="mouth-open" cx="70" cy="102" rx="8" ry="5" fill="#ff7a93"/>` },
+
+  { id:'frog', name:'개구리', svg:`
+    <circle cx="46" cy="36" r="16" fill="#8fd14f"/><circle cx="94" cy="36" r="16" fill="#8fd14f"/>
+    <circle cx="46" cy="36" r="8" fill="#fff"/><circle cx="94" cy="36" r="8" fill="#fff"/>
+    <circle cx="46" cy="38" r="4" fill="#3d2f4d"/><circle cx="94" cy="38" r="4" fill="#3d2f4d"/>
+    <ellipse cx="70" cy="80" rx="50" ry="42" fill="#8fd14f"/>
+    <ellipse cx="70" cy="92" rx="30" ry="16" fill="#b6e88a"/>
+    ${cheeks('#7ab33f')}
+    <path class="mouth-closed" d="M52 90 Q70 102 88 90" stroke="#5a8c2f" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <ellipse class="mouth-open" cx="70" cy="94" rx="14" ry="8" fill="#ff7a93"/>` },
+
+  { id:'penguin', name:'펭귄', svg:`
+    <ellipse cx="70" cy="74" rx="46" ry="48" fill="#3d4654"/>
+    <ellipse cx="70" cy="82" rx="32" ry="38" fill="#fff"/>
+    ${eyes()}
+    <path d="M62 84 L70 92 L78 84 Z" fill="#ff9248"/>
+    <ellipse cx="50" cy="80" rx="6" ry="4" fill="#ffb37a" opacity=".6"/><ellipse cx="90" cy="80" rx="6" ry="4" fill="#ffb37a" opacity=".6"/>
+    <ellipse class="mouth-open" cx="70" cy="98" rx="7" ry="5" fill="#ff7a93"/>` },
+];
+
+let charId = localStorage.getItem('kkoma_char') || 'bear';
+
+function renderMascot(){
+  const c = CHARS.find(x=>x.id===charId) || CHARS[0];
+  mascot.innerHTML = `<svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">${c.svg}</svg>`;
+}
+
+function openCharPicker(){
+  stopSpeak();
+  $('charGrid').innerHTML = CHARS.map(c=>`
+    <div class="char-card ${c.id===charId?'sel':''}" onclick="pickChar('${c.id}')">
+      <svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">${c.svg}</svg>
+      <div class="cname">${c.name}</div>
+    </div>`).join('');
+  $('charModal').classList.add('on');
+}
+function pickChar(id){
+  charId = id;
+  localStorage.setItem('kkoma_char', id);
+  renderMascot();
+  // 선택 표시 갱신
+  document.querySelectorAll('.char-card').forEach(el=>el.classList.remove('sel'));
+  $('charGrid').querySelector(`[onclick="pickChar('${id}')"]`)?.classList.add('sel');
+  // 고른 친구가 짧게 인사
+  const c = CHARS.find(x=>x.id===id);
+  speak(`안녕! 나는 ${c.name}야`);
+}
+function closeCharPicker(){ stopSpeak(); $('charModal').classList.remove('on'); }
 
 function showTab(t){
   stopSpeak(); // 탭 바꾸면 읽기 멈춤
@@ -321,6 +474,7 @@ function delFav(i){
 }
 
 if('speechSynthesis' in window) speechSynthesis.getVoices();
+renderMascot(); // 저장된 캐릭터로 시작
 </script>
 </body>
 </html>
